@@ -1,0 +1,52 @@
+services:
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_URL: postgresql://atlas:atlas@postgres:5432/atlas
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: atlaspassword
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app  # live-reload during dev: edits on your machine show up in the container instantly
+
+  postgres:
+    image: pgvector/pgvector:pg16   # Postgres 16 with the pgvector extension pre-installed
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas
+      POSTGRES_DB: atlas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # named volume = data survives `docker compose down`
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5-community
+    environment:
+      NEO4J_AUTH: neo4j/atlaspassword
+    ports:
+      - "7474:7474"   # Neo4j Browser (web UI) — visit http://localhost:7474
+      - "7687:7687"   # Bolt protocol — this is what your Python code connects to
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  neo4j_data:
