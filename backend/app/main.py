@@ -33,8 +33,10 @@ def health_check():
 
     try:
         with postgres_engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+            result = conn.execute(text("SELECT version()"))
+            version = result.scalar()
         status["postgres"] = "ok"
+        status["postgres_version"] = version
     except Exception as e:
         status["postgres"] = f"error: {e}"
 
