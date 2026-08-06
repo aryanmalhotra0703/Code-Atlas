@@ -4,3 +4,4 @@ pydantic-settings==2.6.0
 sqlalchemy==2.0.36
 psycopg2-binary==2.9.10
 neo4j==5.26.0
+requests==2.32.3
