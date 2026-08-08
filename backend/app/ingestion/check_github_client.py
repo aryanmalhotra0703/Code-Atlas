@@ -9,7 +9,7 @@ Run with:
 
 from app.ingestion.github_client import get_repo, get_commits, get_pull_requests
 
-OWNER, REPO = "httpie", "httpie"
+OWNER, REPO = "httpie", "cli"
 
 repo = get_repo(OWNER, REPO)
 print(f"Repo: {repo['full_name']}")

@@ -66,5 +66,21 @@ def get_commits(owner: str, repo: str, max_pages: int = 5) -> list[dict]:
 
 def get_pull_requests(owner: str, repo: str, max_pages: int = 5) -> list[dict]:
     url = f"{GITHUB_API_BASE}/repos/{owner}/{repo}/pulls"
-    params = {"per_page": 100, "state": "all"}
+    params = {"per_page": 100, "state": "all"}  # 'all' includes closed/merged, not just open
     return _paginated_get(url, params=params, max_pages=max_pages)
+
+
+def get_commit_detail(owner: str, repo: str, sha: str) -> dict:
+    """
+    Fetches full detail for a single commit, including the list of files
+    it touched. This is a separate endpoint from get_commits() -- the
+    bulk list endpoint used for Milestone 1 ingestion is cheap and
+    paginated, but doesn't include per-commit file changes. Getting that
+    detail requires one request per commit, which is why callers bound
+    how many commits they fetch this way rather than doing it for all of
+    them.
+    """
+    url = f"{GITHUB_API_BASE}/repos/{owner}/{repo}/commits/{sha}"
+    response = requests.get(url, headers=_headers(), timeout=15)
+    response.raise_for_status()
+    return response.json()
