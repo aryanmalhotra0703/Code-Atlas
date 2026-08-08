@@ -8,6 +8,7 @@ Run with:
 
 from app.ingestion.repo_source import download_repo_source
 from app.ingestion.parser.python_imports import extract_imports
+from app.ingestion.parser.import_resolver import build_import_edges
 
 files = download_repo_source("httpie", "cli")
 print(f"Downloaded {len(files)} Python files")
@@ -17,10 +18,15 @@ for path, source in files.items():
     try:
         imports = extract_imports(source)
     except SyntaxError:
-        continue  # a handful of real-world files may not parse cleanly
+        continue
 
     if imports and shown < 5:
         print(f"\n{path}")
         for imp in imports:
             print(f"  imports: {imp}")
         shown += 1
+
+edges = build_import_edges(files)
+print(f"\n\nResolved {len(edges)} internal import edges (file -> file within the repo):")
+for from_file, to_file in edges[:15]:
+    print(f"  {from_file}  ->  {to_file}")
