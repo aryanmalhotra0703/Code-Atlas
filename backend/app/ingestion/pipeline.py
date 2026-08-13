@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -6,18 +8,9 @@ from app.models.raw import RawRepository, RawCommit, RawPullRequest
 
 
 def ingest_repo(session: Session, owner: str, name: str, max_pages: int = 5) -> RawRepository:
-    """
-    Fetches repo metadata, commits, and PRs from GitHub, and stores them.
+    existing = session.query(RawRepository).filter_by(full_name=f"{owner}/{name}").first()
+    since = existing.last_synced_at.isoformat() if existing and existing.last_synced_at else None
 
-    Idempotent by design: re-running this is safe. Commits/PRs already in
-    the database are skipped rather than duplicated, because each insert
-    uses ON CONFLICT DO NOTHING against the unique constraints defined in
-    the models (sha for commits, (repo_id, number) for PRs).
-
-    The repo row itself uses ON CONFLICT DO UPDATE instead - unlike
-    commits/PRs (historical, never change once created), stars/description
-    do change over time, so re-ingesting should refresh them.
-    """
     repo_data = get_repo(owner, name)
 
     repo_stmt = (
@@ -29,6 +22,7 @@ def ingest_repo(session: Session, owner: str, name: str, max_pages: int = 5) -> 
             primary_language=repo_data.get("language"),
             stars=repo_data.get("stargazers_count", 0),
             default_branch=repo_data.get("default_branch"),
+            last_synced_at=datetime.now(timezone.utc),
         )
         .on_conflict_do_update(
             index_elements=["github_id"],
@@ -36,6 +30,7 @@ def ingest_repo(session: Session, owner: str, name: str, max_pages: int = 5) -> 
                 "description": repo_data.get("description"),
                 "primary_language": repo_data.get("language"),
                 "stars": repo_data.get("stargazers_count", 0),
+                "last_synced_at": datetime.now(timezone.utc),
             },
         )
         .returning(RawRepository.id)
@@ -43,7 +38,7 @@ def ingest_repo(session: Session, owner: str, name: str, max_pages: int = 5) -> 
     repo_id = session.execute(repo_stmt).scalar_one()
     session.commit()
 
-    commits = get_commits(owner, name, max_pages=max_pages)
+    commits = get_commits(owner, name, max_pages=max_pages, since=since)
     for c in commits:
         author = c["commit"].get("author") or {}
         commit_stmt = (
