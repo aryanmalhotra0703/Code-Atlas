@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     neo4j_user: str
     neo4j_password: str
     github_token: str
+    openai_api_key: str
 
     class Config:
         # Reads a .env file if present (useful for local dev without Docker);

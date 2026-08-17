@@ -10,6 +10,7 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: atlaspassword
       GITHUB_TOKEN: ${GITHUB_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
