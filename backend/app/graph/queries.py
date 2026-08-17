@@ -72,3 +72,22 @@ def get_owner(driver: Driver, repo_full_name: str, file_path: str) -> dict | Non
         )
         record = result.single()
         return dict(record) if record else None
+
+def get_files_for_commit(driver: Driver, repo_full_name: str, sha: str) -> list[str]:
+    """
+    Given a commit's sha, returns every file it touched -- this is the
+    bridge between retrieval (which finds relevant commits/PRs by
+    meaning) and traversal (which answers questions about files). A
+    retrieved commit becomes a real starting point in the graph via
+    exactly this lookup.
+    """
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (c:Commit {repo: $repo, sha: $sha})-[:MODIFIES]->(f:File)
+            RETURN f.path AS path
+            """,
+            repo=repo_full_name,
+            sha=sha,
+        )
+        return [record["path"] for record in result]
