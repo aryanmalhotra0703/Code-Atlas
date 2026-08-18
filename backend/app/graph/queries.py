@@ -91,3 +91,20 @@ def get_files_for_commit(driver: Driver, repo_full_name: str, sha: str) -> list[
             sha=sha,
         )
         return [record["path"] for record in result]
+
+def get_commits_for_pr(driver: Driver, repo_full_name: str, pr_number: str) -> list[str]:
+    """
+    Given a PR number, returns the shas of commits it contains -- the
+    bridge that lets a retrieved PR result get the same file-level
+    traversal a retrieved commit already gets.
+    """
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (pr:PullRequest {repo: $repo, number: $number})-[:CONTAINS]->(c:Commit)
+            RETURN c.sha AS sha
+            """,
+            repo=repo_full_name,
+            number=int(pr_number),
+        )
+        return [record["sha"] for record in result]

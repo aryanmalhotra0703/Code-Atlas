@@ -60,3 +60,15 @@ def get_commit_detail(owner: str, repo: str, sha: str) -> dict:
     response = requests.get(url, headers=_headers(), timeout=15)
     response.raise_for_status()
     return response.json()
+
+def get_pr_commits(owner: str, repo: str, pr_number: int) -> list[dict]:
+    """
+    Fetches the list of commits included in a specific pull request.
+    This is what lets us link a PR to the real files it touched --
+    GitHub tracks PR<->commit membership on its own endpoint, separate
+    from both the PR list and the commit list, so it needs its own call.
+    """
+    url = f"{GITHUB_API_BASE}/repos/{owner}/{repo}/pulls/{pr_number}/commits"
+    response = requests.get(url, headers=_headers(), params={"per_page": 100}, timeout=15)
+    response.raise_for_status()
+    return response.json()

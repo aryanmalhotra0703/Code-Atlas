@@ -113,3 +113,23 @@ def derive_ownership(driver: Driver, repo_full_name: str) -> None:
             """,
             repo=repo_full_name,
         )
+
+def load_pr_commit_links(driver: Driver, repo_full_name: str, pr_number: int, commit_shas: list[str]) -> None:
+    """
+    Creates a PullRequest node and CONTAINS edges to the commits it
+    includes. Commit nodes are MERGEd, not MATCHed, here -- a PR might
+    reference a commit outside the bounded set already loaded elsewhere,
+    and MERGE ensures the edge can still be created either way.
+    """
+    with driver.session() as session:
+        for sha in commit_shas:
+            session.run(
+                """
+                MERGE (pr:PullRequest {repo: $repo, number: $number})
+                MERGE (c:Commit {repo: $repo, sha: $sha})
+                MERGE (pr)-[:CONTAINS]->(c)
+                """,
+                repo=repo_full_name,
+                number=pr_number,
+                sha=sha,
+            )
