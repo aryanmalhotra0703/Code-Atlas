@@ -1,10 +1,22 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.routes import router
 from sqlalchemy import create_engine, text
 from neo4j import GraphDatabase
 
 from app.core.config import settings
 
 app = FastAPI(title="Code Atlas API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Vite's default dev server port
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(router, prefix="/api")
 
 # create_engine() doesn't actually connect yet — SQLAlchemy connects lazily,
 # on first query. That's why /health below runs a real query rather than
