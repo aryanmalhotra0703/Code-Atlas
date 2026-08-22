@@ -5,6 +5,7 @@ from app.db.session import get_session
 from app.models.raw import RawRepository
 from app.graph.neo4j_client import driver
 from app.investigate.engine import investigate
+from app.graph.queries import get_module_graph
 
 router = APIRouter()
 
@@ -25,3 +26,9 @@ def investigate_endpoint(query: str, session: Session = Depends(get_session)):
 
     results = investigate(session, driver, repo.id, REPO, query, top_k=5)
     return {"query": query, "repo": REPO, "results": results}
+
+
+
+@router.get("/architecture")
+def architecture_endpoint():
+    return get_module_graph(driver, REPO)

@@ -108,3 +108,46 @@ def get_commits_for_pr(driver: Driver, repo_full_name: str, pr_number: str) -> l
             number=int(pr_number),
         )
         return [record["sha"] for record in result]
+
+    
+
+def get_module_graph(driver: Driver, repo_full_name: str) -> dict:
+    """
+    Groups files into module-level clusters using their top-level
+    directory as the module name. This is a stated heuristic, not an
+    inferred architectural boundary -- clustering by real import-graph
+    community detection is a much harder unsupervised problem, out of
+    scope here. Directory structure is a reasonable, explainable
+    stand-in when a repo is already organized that way.
+
+    Returns module-level nodes (with file counts) and aggregated
+    IMPORTS edges between modules (weight = number of underlying
+    file-to-file import edges), computed directly from the existing
+    File/IMPORTS graph -- no new data or schema needed.
+    """
+    with driver.session() as session:
+        modules_result = session.run(
+            """
+            MATCH (f:File {repo: $repo})
+            WHERE f.path CONTAINS '/'
+            WITH split(f.path, '/')[0] AS module, count(*) AS file_count
+            RETURN module, file_count
+            ORDER BY file_count DESC
+            """,
+            repo=repo_full_name,
+        )
+        modules = [dict(r) for r in modules_result]
+
+        edges_result = session.run(
+            """
+            MATCH (a:File {repo: $repo})-[:IMPORTS]->(b:File {repo: $repo})
+            WITH split(a.path, '/')[0] AS from_module, split(b.path, '/')[0] AS to_module
+            WHERE from_module <> to_module
+            RETURN from_module, to_module, count(*) AS weight
+            ORDER BY weight DESC
+            """,
+            repo=repo_full_name,
+        )
+        edges = [dict(r) for r in edges_result]
+
+    return {"modules": modules, "edges": edges}
