@@ -1,3 +1,4 @@
+import TraceGraph3D from './TraceGraph3D'
 import { useState } from 'react'
 
 type FileResult = {
@@ -25,6 +26,7 @@ function InvestigateView() {
   const [results, setResults] = useState<Candidate[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showGraph, setShowGraph] = useState(false)
 
   async function runInvestigation(e: React.FormEvent) {
     e.preventDefault()
@@ -86,6 +88,12 @@ function InvestigateView() {
                 ))}
               </ul>
             )}
+            {results.length > 0 && (
+            <button className="graph-toggle" onClick={() => setShowGraph(!showGraph)}>
+                {showGraph ? 'Hide 3D trace' : 'View 3D trace'}
+            </button>
+            )}
+            {showGraph && results.length > 0 && <TraceGraph3D results={results} query={query} />}
           </div>
         ))}
       </div>
