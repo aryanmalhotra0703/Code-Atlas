@@ -1,3 +1,9 @@
 body {
   margin: 0;
+  background: #0B0B0E;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
 }

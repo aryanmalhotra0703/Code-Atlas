@@ -59,6 +59,7 @@ def _traverse_files(neo4j_driver: Driver, repo_full_name: str, file_paths: list[
                 "path": f,
                 "owner": owner["owner"] if owner else None,
                 "blast_radius_count": len(blast),
+                "blast_radius_files": blast,
             }
         )
     return files
