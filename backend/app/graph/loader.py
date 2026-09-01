@@ -5,26 +5,31 @@ def load_file_graph(driver: Driver, repo_full_name: str, edges: list[tuple[str, 
     """
     Loads File nodes and IMPORTS edges into Neo4j.
 
-    Uses MERGE instead of CREATE throughout, which makes this idempotent --
-    running it again with the same data won't create duplicate nodes or
-    edges. This is the same idempotency principle as the Postgres
-    ingestion pipeline (ON CONFLICT DO NOTHING), just expressed in
-    Cypher's own idiom instead of SQL's.
+    Uses UNWIND to batch all edges into a single query instead of one
+    round-trip per edge. The original per-edge loop took 83.5s against
+    django/django's 8,964 edges -- almost entirely network round-trip
+    overhead, not actual write work. Batching in chunks of 1000 cut
+    that dramatically, since Neo4j processes the whole batch server-side
+    in one transaction instead of one network call per edge.
 
-    File paths are namespaced by repo_full_name in each node, so ingesting
-    a second repo later won't collide with this one's files.
+    Still uses MERGE throughout for the same idempotency reasons as
+    before -- batching changes *how* the writes are sent, not whether
+    re-running this is safe.
     """
+    BATCH_SIZE = 1000
     with driver.session() as session:
-        for from_file, to_file in edges:
+        for i in range(0, len(edges), BATCH_SIZE):
+            batch = edges[i : i + BATCH_SIZE]
+            batch_data = [{"from_path": f, "to_path": t} for f, t in batch]
             session.run(
                 """
-                MERGE (a:File {repo: $repo, path: $from_path})
-                MERGE (b:File {repo: $repo, path: $to_path})
+                UNWIND $batch AS row
+                MERGE (a:File {repo: $repo, path: row.from_path})
+                MERGE (b:File {repo: $repo, path: row.to_path})
                 MERGE (a)-[:IMPORTS]->(b)
                 """,
                 repo=repo_full_name,
-                from_path=from_file,
-                to_path=to_file,
+                batch=batch_data,
             )
 
 
