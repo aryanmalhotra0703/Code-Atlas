@@ -10,18 +10,11 @@ from app.graph.queries import (
 )
 from app.graph.loader import load_pr_commit_links, load_commit_graph
 from app.ingestion.github_client import get_pr_commits, get_commit_detail
+from app.investigate.ranking import composite_score
+from app.models.raw import RawCommit, RawPullRequest
 
 
-def _files_for_commit_with_fallback(
-    neo4j_driver: Driver, repo_full_name: str, sha: str
-) -> list[str]:
-    """
-    Checks the graph first. If a commit has no MODIFIES edges yet, it
-    means run_commit_graph_load's bounded batch never covered it -- so
-    we fetch and load its file details right now, on the spot. A real
-    commit always touches at least one file, so an empty result here
-    reliably means "not loaded yet," not "genuinely touches nothing."
-    """
+def _files_for_commit_with_fallback(neo4j_driver: Driver, repo_full_name: str, sha: str) -> list[str]:
     files = get_files_for_commit(neo4j_driver, repo_full_name, sha)
     if not files:
         owner, repo = repo_full_name.split("/", 1)
@@ -31,14 +24,7 @@ def _files_for_commit_with_fallback(
     return files
 
 
-def _commits_for_pr_with_fallback(
-    neo4j_driver: Driver, repo_full_name: str, pr_number: str
-) -> list[str]:
-    """
-    Checks Neo4j first for already-linked commits. If none exist, fetches
-    and links them from GitHub right now -- lazy loading instead of
-    relying on a fixed bulk limit having happened to cover this PR.
-    """
+def _commits_for_pr_with_fallback(neo4j_driver: Driver, repo_full_name: str, pr_number: str) -> list[str]:
     shas = get_commits_for_pr(neo4j_driver, repo_full_name, pr_number)
     if not shas:
         owner, repo = repo_full_name.split("/", 1)
@@ -65,6 +51,30 @@ def _traverse_files(neo4j_driver: Driver, repo_full_name: str, file_paths: list[
     return files
 
 
+def _get_candidate_date(pg_session: Session, repo_id: int, source_type: str, source_id: str):
+    """
+    Looks up the real authored/created date for a candidate, needed for
+    the recency component of the ranking formula. Returns None if not
+    found rather than raising -- a missing date degrades gracefully to
+    a recency score of 0 instead of breaking ranking entirely.
+    """
+    if source_type == "commit":
+        row = (
+            pg_session.query(RawCommit)
+            .filter_by(repo_id=repo_id, sha=source_id)
+            .first()
+        )
+        return row.authored_date if row else None
+    elif source_type == "pull_request":
+        row = (
+            pg_session.query(RawPullRequest)
+            .filter_by(repo_id=repo_id, number=int(source_id))
+            .first()
+        )
+        return row.created_at if row else None
+    return None
+
+
 def investigate(
     pg_session: Session,
     neo4j_driver: Driver,
@@ -74,11 +84,11 @@ def investigate(
     top_k: int = 5,
 ) -> list[dict]:
     """
-    Takes a plain-English query, retrieves the most relevant commits/PRs
-    by meaning, then walks the graph to find real files touched, their
-    derived owner, and their blast radius -- fetching any missing detail
-    (PR<->commit links, commit<->file details) lazily on the spot rather
-    than depending on a fixed bulk-load limit having covered it.
+    Takes a plain-English query, retrieves candidate commits/PRs by
+    meaning, walks the graph to find real files/owners/blast radius, and
+    re-ranks everything using a composite score combining similarity,
+    recency, and structural centrality -- not raw embedding similarity
+    alone. See ranking.py for the formula and its reasoning.
     """
     candidates = search(pg_session, repo_id, query, top_k=top_k)
 
@@ -103,6 +113,11 @@ def investigate(
                 file_paths.update(_files_for_commit_with_fallback(neo4j_driver, repo_full_name, sha))
             entry["files"] = _traverse_files(neo4j_driver, repo_full_name, sorted(file_paths))
 
+        total_blast = sum(f["blast_radius_count"] for f in entry["files"])
+        date = _get_candidate_date(pg_session, repo_id, c["source_type"], c["source_id"])
+        entry["composite_score"] = round(composite_score(c["similarity"], date, total_blast), 3)
+
         results.append(entry)
 
+    results.sort(key=lambda r: r["composite_score"], reverse=True)
     return results
