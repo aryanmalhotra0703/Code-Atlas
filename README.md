@@ -54,6 +54,41 @@ found as a side effect of the search, not looked for directly.
 - **sentence-transformers** (`all-MiniLM-L6-v2`) — local embedding model
 - **Docker Compose** — local orchestration
 
+## Performance & scale
+
+Tested against `httpie/cli` (133 files) throughout development, then
+stress-tested against a genuinely larger repo, `django/django` (2,930
+files, ~9,000 import edges), to find real bottlenecks rather than only
+proving the happy path.
+
+**Found:** the initial Neo4j graph-loading step took 83.5 seconds against
+django — 89% of total pipeline runtime — caused by one network
+round-trip per edge (a `MERGE` query in a loop).
+
+**Fixed:** batched writes using Cypher's `UNWIND`, sending edges in
+chunks of 1,000 per query instead of one query per edge. Same
+idempotent logic, same correctness — just fewer, larger transactions.
+
+**Result:** 83.5s → 26.7s, a 3.1x improvement, verified by re-running
+the identical stress test before and after.
+
+## Ranking
+
+Results aren't ranked by raw embedding similarity alone. A composite
+score combines three signals:
+
+- **Similarity** (50%) — semantic relevance to the query
+- **Recency** (30%) — exponentially decayed, so recent changes are
+  weighted higher without completely ignoring older ones
+- **Blast radius** (20%) — log-scaled structural centrality, so a
+  result touching widely-depended-on code ranks higher than an
+  equally-similar result touching an isolated file
+
+Weights are a deliberate design choice, not a tuned optimum: semantic
+relevance dominates, while recency and structural importance still
+meaningfully shift rankings. See `backend/app/investigate/ranking.py`
+for the implementation and reasoning.
+
 ## Known trade-offs
 
 Stated explicitly rather than discovered later:
@@ -80,4 +115,5 @@ docker compose exec api python -m app.graph.run_graph_load
 docker compose exec api python -m app.graph.run_commit_graph_load
 docker compose exec api python -m app.embeddings.run_embedding
 docker compose exec api python -m app.investigate.check_investigate
+docker compose exec api pytest tests/ -v
 ```
