@@ -12,9 +12,23 @@ def _headers() -> dict:
     }
 
 
+class RepoNotFoundError(Exception):
+    """Raised when a repo genuinely doesn't exist, or is private/inaccessible
+    with the current token. Distinct from other HTTP errors (rate limits,
+    server errors) so callers can give a clear, specific message instead
+    of a generic failure."""
+    pass
+
+
 def get_repo(owner: str, repo: str) -> dict:
+    """
+    Fetches top-level repo metadata: description, language, star count, etc.
+    This is a single object, no pagination needed.
+    """
     url = f"{GITHUB_API_BASE}/repos/{owner}/{repo}"
     response = requests.get(url, headers=_headers(), timeout=10)
+    if response.status_code == 404:
+        raise RepoNotFoundError(f"Repository '{owner}/{repo}' was not found or is not accessible.")
     response.raise_for_status()
     return response.json()
 

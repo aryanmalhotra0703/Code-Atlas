@@ -20,6 +20,7 @@ type InvestigateResponse = {
   query: string
   repo: string
   results: Candidate[]
+  message?: string
 }
 
 function shorten(text: string, wordLimit: number = 6): string {
@@ -61,9 +62,14 @@ function InvestigateView() {
       const res = await fetch(
         `http://localhost:8000/api/investigate?query=${encodeURIComponent(q)}`
       )
-      if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-      const data: InvestigateResponse = await res.json()
+            const data: InvestigateResponse & { message?: string } = await res.json()
+      if (!res.ok) {
+        throw new Error((data as any).detail || `Request failed: ${res.status}`)
+      }
       setResults(data.results)
+      if (data.message) {
+        setError(data.message)
+      }
       setSelectedIndex(data.results.length > 0 ? 0 : null)
       setShowGraph(false)
       setGraphExpanded(false)
