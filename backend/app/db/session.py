@@ -15,7 +15,17 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_engine(settings.postgres_url)
+engine = create_engine(
+    settings.postgres_url,
+    pool_pre_ping=True,   # tests each connection with a lightweight query
+                           # before handing it out, so a connection Neon
+                           # silently closed in the background gets
+                           # detected and replaced instead of causing a
+                           # confusing mid-request failure
+    pool_recycle=280,     # proactively discards and replaces connections
+                           # older than ~4.5 minutes, staying safely under
+                           # Neon's own idle-connection timeout
+)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
