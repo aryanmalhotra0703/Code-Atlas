@@ -1,17 +1,25 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from app.api.routes import router
+import re
 from sqlalchemy import create_engine, text
 from neo4j import GraphDatabase
 
 from app.core.config import settings
+from app.api.routes import router
 
 app = FastAPI(title="Code Atlas API")
 
+# Temporary startup diagnostic: prints which Postgres host and Neo4j URI
+# this running instance is actually connecting to (host only for
+# Postgres, no credentials), so we can definitively compare it against
+# what we expect instead of guessing from a manual copy-paste comparison.
+_host_match = re.search(r"@([^/]+)/", settings.postgres_url)
+print(f"[STARTUP] Connecting to Postgres host: {_host_match.group(1) if _host_match else 'UNKNOWN'}")
+print(f"[STARTUP] Connecting to Neo4j URI: {settings.neo4j_uri}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite's default dev server port
+    allow_origins=["http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -36,10 +44,7 @@ neo4j_driver = GraphDatabase.driver(
 def health_check():
     """
     Confirms the API can actually talk to both databases, not just that
-    the FastAPI process is alive. A /health that only returns {"ok": true}
-    without touching dependencies will happily report healthy while
-    Postgres or Neo4j are unreachable — exactly the failure mode you
-    don't want to discover during a live demo.
+    the FastAPI process is alive.
     """
     status = {"api": "ok", "postgres": "unknown", "neo4j": "unknown"}
 
