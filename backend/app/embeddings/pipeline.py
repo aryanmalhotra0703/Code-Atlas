@@ -8,10 +8,21 @@ from app.models.embedding import Embedding
 MODEL_NAME = "all-MiniLM-L6-v2"
 BATCH_SIZE = 100
 
-# Loaded once at import time, not inside a function -- loading the model
-# (downloading weights on first run, then loading into memory) is the
-# slow part, so we don't want to repeat that on every call.
-_model = SentenceTransformer(MODEL_NAME)
+# Loaded lazily on first actual use, not at import time. Eager loading
+# meant the full model (plus PyTorch's baseline memory overhead) loaded
+# into RAM the instant the app process started -- on Render's free tier
+# (512MB), this memory spike happened before a single request was even
+# served, crashing the container with an out-of-memory kill (exit 137)
+# before startup could finish. Lazy loading defers that cost to the
+# first real query instead of the app's boot sequence.
+_model = None
+
+
+def _get_model() -> SentenceTransformer:
+    global _model
+    if _model is None:
+        _model = SentenceTransformer(MODEL_NAME)
+    return _model
 
 
 def get_embeddings(texts: list[str]) -> list[list[float]]:
@@ -19,7 +30,7 @@ def get_embeddings(texts: list[str]) -> list[list[float]]:
     Runs the embedding model locally -- no network call, no API key,
     no cost. Returns one vector per input text, same order they came in.
     """
-    vectors = _model.encode(texts, show_progress_bar=False)
+    vectors = _get_model().encode(texts, show_progress_bar=False)
     return vectors.tolist()
 
 
