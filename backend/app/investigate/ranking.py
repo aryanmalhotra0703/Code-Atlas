@@ -37,7 +37,7 @@ def blast_radius_score(total_blast_radius: int) -> float:
     return min(math.log1p(total_blast_radius) / math.log1p(100), 1.0)
 
 
-def composite_score(similarity: float, date: datetime | None, total_blast_radius: int) -> float:
+def composite_score_breakdown(similarity: float, date: datetime | None, total_blast_radius: int) -> dict:
     """
     Combines three independent signals into one explainable ranking
     score, instead of relying on embedding similarity alone:
@@ -51,9 +51,18 @@ def composite_score(similarity: float, date: datetime | None, total_blast_radius
     barely-similar recent, central one -- while recency and structural
     importance still meaningfully shift the ranking rather than being
     ignored entirely.
+
+    Returns each weighted component separately alongside the total --
+    this is what lets the UI show a real, honest breakdown (semantic /
+    recency / blast radius bars) instead of a single opaque number.
     """
-    return (
-        SIMILARITY_WEIGHT * similarity
-        + RECENCY_WEIGHT * recency_score(date)
-        + BLAST_RADIUS_WEIGHT * blast_radius_score(total_blast_radius)
-    )
+    sim_component = SIMILARITY_WEIGHT * similarity
+    recency_component = RECENCY_WEIGHT * recency_score(date)
+    blast_component = BLAST_RADIUS_WEIGHT * blast_radius_score(total_blast_radius)
+
+    return {
+        "total": round(sim_component + recency_component + blast_component, 3),
+        "similarity_component": round(sim_component, 3),
+        "recency_component": round(recency_component, 3),
+        "blast_component": round(blast_component, 3),
+    }

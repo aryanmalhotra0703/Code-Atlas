@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from app.investigate.ranking import recency_score, blast_radius_score, composite_score
+from app.investigate.ranking import recency_score, blast_radius_score, composite_score_breakdown
 
 
 def test_recency_score_is_high_for_today():
@@ -30,6 +30,6 @@ def test_blast_radius_score_caps_near_one():
 
 def test_composite_score_rewards_high_similarity_recent_central_result():
     recent = datetime.now(timezone.utc)
-    high = composite_score(similarity=0.9, date=recent, total_blast_radius=50)
-    low = composite_score(similarity=0.3, date=recent - timedelta(days=400), total_blast_radius=0)
-    assert high > low
+    high = composite_score_breakdown(similarity=0.9, date=recent, total_blast_radius=50)
+    low = composite_score_breakdown(similarity=0.3, date=recent - timedelta(days=400), total_blast_radius=0)
+    assert high["total"] > low["total"]

@@ -10,7 +10,7 @@ from app.graph.queries import (
 )
 from app.graph.loader import load_pr_commit_links, load_commit_graph
 from app.ingestion.github_client import get_pr_commits, get_commit_detail
-from app.investigate.ranking import composite_score
+from app.investigate.ranking import composite_score_breakdown
 from app.models.raw import RawCommit, RawPullRequest
 
 
@@ -84,11 +84,13 @@ def investigate(
     top_k: int = 5,
 ) -> list[dict]:
     """
-    Takes a plain-English query, retrieves candidate commits/PRs by
-    meaning, walks the graph to find real files/owners/blast radius, and
-    re-ranks everything using a composite score combining similarity,
-    recency, and structural centrality -- not raw embedding similarity
-    alone. See ranking.py for the formula and its reasoning.
+    Takes a plain-English query, retrieves the most relevant commits/PRs
+    by meaning, then walks the graph to find real files touched, their
+    derived owner, and their blast radius -- fetching any missing detail
+    (PR<->commit links, commit<->file details) lazily on the spot rather
+    than depending on a fixed bulk-load limit having covered it. Results
+    are re-ranked by a composite score combining similarity, recency,
+    and structural centrality -- not raw embedding similarity alone.
     """
     candidates = search(pg_session, repo_id, query, top_k=top_k)
 
@@ -115,7 +117,9 @@ def investigate(
 
         total_blast = sum(f["blast_radius_count"] for f in entry["files"])
         date = _get_candidate_date(pg_session, repo_id, c["source_type"], c["source_id"])
-        entry["composite_score"] = round(composite_score(c["similarity"], date, total_blast), 3)
+        breakdown = composite_score_breakdown(c["similarity"], date, total_blast)
+        entry["composite_score"] = breakdown["total"]
+        entry["score_breakdown"] = breakdown
 
         results.append(entry)
 
