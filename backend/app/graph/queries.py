@@ -151,3 +151,18 @@ def get_module_graph(driver: Driver, repo_full_name: str) -> dict:
         edges = [dict(r) for r in edges_result]
 
     return {"modules": modules, "edges": edges}
+
+    
+
+def get_file_count(driver: Driver, repo_full_name: str) -> int:
+    """
+    Real file count from the graph -- used for the sidebar's repo stats
+    instead of a hardcoded number that could drift from reality after
+    re-ingestion.
+    """
+    with driver.session() as session:
+        result = session.run(
+            "MATCH (f:File {repo: $repo}) RETURN count(f) AS count",
+            repo=repo_full_name,
+        )
+        return result.single()["count"]

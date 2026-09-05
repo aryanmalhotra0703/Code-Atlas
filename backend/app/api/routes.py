@@ -6,7 +6,7 @@ from app.db.session import get_session
 from app.models.raw import RawRepository
 from app.graph.neo4j_client import driver
 from app.investigate.engine import investigate
-from app.graph.queries import get_module_graph
+from app.graph.queries import get_module_graph, get_file_count
 
 logger = logging.getLogger(__name__)
 
@@ -63,3 +63,24 @@ def investigate_endpoint(query: str, session: Session = Depends(get_session)):
 @router.get("/architecture")
 def architecture_endpoint():
     return get_module_graph(driver, REPO)
+
+
+
+@router.get("/stats")
+def stats_endpoint(session: Session = Depends(get_session)):
+    """
+    Real repo stats for the sidebar -- file count from the graph,
+    metadata and last sync time from Postgres. Kept separate from
+    /investigate since this is cheap, static-ish data the frontend can
+    fetch once on load, not per-query.
+    """
+    repo = session.query(RawRepository).filter_by(full_name=REPO).first()
+    if repo is None:
+        raise HTTPException(status_code=400, detail=f"{REPO} has not been ingested yet.")
+
+    return {
+        "full_name": repo.full_name,
+        "primary_language": repo.primary_language,
+        "file_count": get_file_count(driver, REPO),
+        "last_synced_at": repo.last_synced_at.isoformat() if repo.last_synced_at else None,
+    }
