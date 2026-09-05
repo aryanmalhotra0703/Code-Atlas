@@ -505,3 +505,33 @@ h3 {
 .hero .subtitle {
   margin-bottom: 0;
 }
+
+.example-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.85rem;
+}
+
+.example-label {
+  font-size: 0.75rem;
+  color: #6B6B75;
+}
+
+.example-chip {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  border: 1px solid #26262C;
+  background: #16161B;
+  color: #9A9AA5;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.example-chip:hover {
+  border-color: #7F77DD;
+  color: #EDEDF0;
+}

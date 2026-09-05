@@ -39,6 +39,12 @@ type RepoStats = {
   last_synced_at: string | null
 }
 
+const EXAMPLE_QUERIES = [
+  'SSL certificate verification is failing',
+  'JSON output formatting is broken',
+  'redirect handling is incorrect',
+]
+
 function shorten(text: string, wordLimit: number = 6): string {
   const words = text.split(' ')
   if (words.length <= wordLimit) return text
@@ -141,6 +147,24 @@ function InvestigateView({ stats }: { stats: RepoStats | null }) {
           {loading ? 'Investigating…' : 'Investigate'}
         </button>
       </form>
+
+      {results.length === 0 && !loading && (
+        <div className="example-chips">
+          <span className="example-label">Try:</span>
+          {EXAMPLE_QUERIES.map((eq) => (
+            <button
+              key={eq}
+              className="example-chip"
+              onClick={() => {
+                setQuery(eq)
+                runQuery(eq)
+              }}
+            >
+              {eq}
+            </button>
+          ))}
+        </div>
+      )}
 
       {history.length > 0 && (
         <div className="history-pills">
