@@ -466,3 +466,42 @@ h3 {
   padding: 2rem 3rem;
   max-width: 1100px;
 }
+
+.hero {
+  text-align: center;
+  padding: 1.5rem 0 2rem;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: #9A9AA5;
+  background: #16161B;
+  border: 1px solid #26262C;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  margin-bottom: 1rem;
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #1D9E75;
+}
+
+.hero-title {
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  background: linear-gradient(135deg, #7F77DD, #A8A2F0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero .subtitle {
+  margin-bottom: 0;
+}

@@ -8,12 +8,21 @@ type FileResult = {
   blast_radius_files: string[]
 }
 
+type ScoreBreakdown = {
+  total: number
+  similarity_component: number
+  recency_component: number
+  blast_component: number
+}
+
 type Candidate = {
   type: string
   id: string
   similarity: number
   preview: string
   files: FileResult[]
+  composite_score?: number
+  score_breakdown?: ScoreBreakdown
 }
 
 type InvestigateResponse = {
@@ -23,10 +32,28 @@ type InvestigateResponse = {
   message?: string
 }
 
+type RepoStats = {
+  full_name: string
+  primary_language: string | null
+  file_count: number
+  last_synced_at: string | null
+}
+
 function shorten(text: string, wordLimit: number = 6): string {
   const words = text.split(' ')
   if (words.length <= wordLimit) return text
   return words.slice(0, wordLimit).join(' ') + '…'
+}
+
+function timeAgo(isoString: string | null): string {
+  if (!isoString) return 'never synced'
+  const diffMs = Date.now() - new Date(isoString).getTime()
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
 }
 
 // Raw cosine similarity scores (e.g. 0.58 vs 0.57) aren't meaningfully
@@ -42,7 +69,7 @@ function relativeRelevance(score: number, all: Candidate[]): number {
   return Math.round(((score - min) / (max - min)) * 100)
 }
 
-function InvestigateView() {
+function InvestigateView({ stats }: { stats: RepoStats | null }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Candidate[]>([])
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
@@ -62,7 +89,7 @@ function InvestigateView() {
       const res = await fetch(
         `http://localhost:8000/api/investigate?query=${encodeURIComponent(q)}`
       )
-            const data: InvestigateResponse & { message?: string } = await res.json()
+      const data: InvestigateResponse = await res.json()
       if (!res.ok) {
         throw new Error((data as any).detail || `Request failed: ${res.status}`)
       }
@@ -92,7 +119,16 @@ function InvestigateView() {
 
   return (
     <div>
-      <p className="subtitle">Describe a problem, trace it to real code.</p>
+      <div className="hero">
+        {stats && (
+          <div className="live-badge">
+            <span className="live-dot" />
+            Live · {stats.full_name} · Last synced {timeAgo(stats.last_synced_at)}
+          </div>
+        )}
+        <h2 className="hero-title">Investigate your codebase</h2>
+        <p className="subtitle">Describe a problem, trace it to real code.</p>
+      </div>
 
       <form onSubmit={handleSubmit} className="query-form">
         <input

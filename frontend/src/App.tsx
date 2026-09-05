@@ -76,7 +76,7 @@ function App() {
       </aside>
 
       <main className="content">
-        {tab === 'investigate' ? <InvestigateView /> : <ArchitectureView />}
+        {tab === 'investigate' ? <InvestigateView stats={stats} /> : <ArchitectureView />}
       </main>
     </div>
   )
