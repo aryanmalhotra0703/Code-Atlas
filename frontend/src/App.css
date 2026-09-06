@@ -535,3 +535,158 @@ h3 {
   border-color: #7F77DD;
   color: #EDEDF0;
 }
+
+.file-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.file-card {
+  background: #0B0B0E;
+  border: 1px solid #26262C;
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+}
+
+.file-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.file-path {
+  color: #EDEDF0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: none;
+  padding: 0;
+}
+
+.hot-badge {
+  font-size: 0.7rem;
+  color: #F0997B;
+  font-weight: 500;
+}
+
+.owner-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.owner-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #0B0B0E;
+}
+
+.owner-name {
+  font-size: 0.78rem;
+  color: #9A9AA5;
+}
+
+.blast-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.blast-bar {
+  flex: 1;
+  height: 4px;
+  background: #26262C;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.blast-bar-fill {
+  height: 100%;
+  background: #D85A30;
+}
+
+.blast-count {
+  font-size: 0.72rem;
+  color: #6B6B75;
+  white-space: nowrap;
+}
+
+.score-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem;
+  background: #0B0B0E;
+  border-radius: 8px;
+}
+
+.score-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+}
+
+.score-bar-label {
+  width: 80px;
+  color: #9A9AA5;
+  flex-shrink: 0;
+}
+
+.score-bar-track {
+  flex: 1;
+  height: 5px;
+  background: #26262C;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+}
+
+.score-bar-value {
+  width: 45px;
+  text-align: right;
+  color: #6B6B75;
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+
+.skeleton-status {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #9A9AA5;
+  margin-bottom: 1rem;
+}
+
+.skeleton-row {
+  height: 64px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #16161B 25%, #1D1D24 50%, #16161B 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  margin-bottom: 4px;
+}
+
+.skeleton-panel {
+  min-height: 280px;
+  background: linear-gradient(90deg, #16161B 25%, #1D1D24 50%, #16161B 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

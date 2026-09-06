@@ -75,6 +75,28 @@ function relativeRelevance(score: number, all: Candidate[]): number {
   return Math.round(((score - min) / (max - min)) * 100)
 }
 
+// Deterministic color per owner name -- same person always gets the same
+// avatar color across the whole app, without needing a lookup table.
+function ownerColor(name: string): string {
+  const colors = ['#7F77DD', '#378ADD', '#1D9E75', '#D85A30', '#BA7517']
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return colors[Math.abs(hash) % colors.length]
+}
+
+function ScoreBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const pct = Math.min((value / max) * 100, 100)
+  return (
+    <div className="score-bar-row">
+      <span className="score-bar-label">{label}</span>
+      <div className="score-bar-track">
+        <div className="score-bar-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="score-bar-value">{value.toFixed(3)}</span>
+    </div>
+  )
+}
+
 function InvestigateView({ stats }: { stats: RepoStats | null }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Candidate[]>([])
@@ -82,6 +104,7 @@ function InvestigateView({ stats }: { stats: RepoStats | null }) {
   const [showGraph, setShowGraph] = useState(false)
   const [graphExpanded, setGraphExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingStatus, setLoadingStatus] = useState('Embedding query…')
   const [error, setError] = useState<string | null>(null)
   const [history, setHistory] = useState<string[]>([])
 
@@ -90,6 +113,17 @@ function InvestigateView({ stats }: { stats: RepoStats | null }) {
 
     setLoading(true)
     setError(null)
+
+    // These labels are cosmetic -- the real request is one network call,
+    // not three literal stages. Cycling text just gives a sense of
+    // progress while genuinely waiting on the backend.
+    const statuses = ['Embedding query…', 'Searching for matches…', 'Traversing the graph…']
+    let statusIndex = 0
+    setLoadingStatus(statuses[0])
+    const statusInterval = setInterval(() => {
+      statusIndex = (statusIndex + 1) % statuses.length
+      setLoadingStatus(statuses[statusIndex])
+    }, 900)
 
     try {
       const res = await fetch(
@@ -112,6 +146,7 @@ function InvestigateView({ stats }: { stats: RepoStats | null }) {
       setResults([])
       setSelectedIndex(null)
     } finally {
+      clearInterval(statusInterval)
       setLoading(false)
     }
   }
@@ -178,7 +213,21 @@ function InvestigateView({ stats }: { stats: RepoStats | null }) {
 
       {error && <p className="error">{error}</p>}
 
-      {results.length > 0 && (
+      {loading && (
+        <div className="skeleton-wrap">
+          <p className="skeleton-status">{loadingStatus}</p>
+          <div className="split-layout">
+            <div className="result-list">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="skeleton-row" />
+              ))}
+            </div>
+            <div className="detail-panel skeleton-panel" />
+          </div>
+        </div>
+      )}
+
+      {!loading && results.length > 0 && (
         <div className="split-layout">
           <div className="result-list">
             {results.map((r, i) => {
@@ -214,16 +263,45 @@ function InvestigateView({ stats }: { stats: RepoStats | null }) {
                 </div>
                 <p className="preview" title={selected.preview}>{selected.preview}</p>
 
+                {selected.score_breakdown && (
+                  <div className="score-breakdown">
+                    <ScoreBar label="Semantic" value={selected.score_breakdown.similarity_component} max={0.5} color="#7F77DD" />
+                    <ScoreBar label="Recency" value={selected.score_breakdown.recency_component} max={0.3} color="#378ADD" />
+                    <ScoreBar label="Blast radius" value={selected.score_breakdown.blast_component} max={0.2} color="#D85A30" />
+                  </div>
+                )}
+
                 {selected.files.length > 0 && (
-                  <ul className="files">
+                  <div className="file-cards">
                     {selected.files.map((f) => (
-                      <li key={f.path}>
-                        <code>{f.path}</code>
-                        {f.owner && <span> — owner: {f.owner}</span>}
-                        <span> — blast radius: {f.blast_radius_count} files</span>
-                      </li>
+                      <div key={f.path} className="file-card">
+                        <div className="file-card-top">
+                          <code className="file-path">{f.path}</code>
+                          {f.blast_radius_count > 30 && <span className="hot-badge">🔥 HOT</span>}
+                        </div>
+                        {f.owner && (
+                          <div className="owner-row">
+                            <span
+                              className="owner-avatar"
+                              style={{ background: ownerColor(f.owner) }}
+                            >
+                              {f.owner.charAt(0).toUpperCase()}
+                            </span>
+                            <span className="owner-name">{f.owner}</span>
+                          </div>
+                        )}
+                        <div className="blast-bar-row">
+                          <div className="blast-bar">
+                            <div
+                              className="blast-bar-fill"
+                              style={{ width: `${Math.min((f.blast_radius_count / 60) * 100, 100)}%` }}
+                            />
+                          </div>
+                          <span className="blast-count">{f.blast_radius_count} files</span>
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
 
                 {selected.files.length > 0 && (
