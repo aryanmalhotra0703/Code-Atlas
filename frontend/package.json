@@ -13,6 +13,7 @@
     "3d-force-graph": "^1.80.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-force-graph-2d": "^1.29.1",
     "three": "^0.185.1"
   },
   "devDependencies": {

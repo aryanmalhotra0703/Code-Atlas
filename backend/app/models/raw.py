@@ -18,6 +18,8 @@ class RawRepository(Base):
     default_branch: Mapped[str | None]
     ingested_at: Mapped[datetime] = mapped_column(server_default=func.now())
     last_synced_at: Mapped[datetime | None]
+    last_commit_graph_sync_at: Mapped[datetime | None]
+    last_pr_graph_sync_at: Mapped[datetime | None]
 
     commits: Mapped[list["RawCommit"]] = relationship(back_populates="repo")
     pull_requests: Mapped[list["RawPullRequest"]] = relationship(back_populates="repo")

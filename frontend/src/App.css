@@ -690,3 +690,23 @@ h3 {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+.architecture-graph {
+  border: 1px solid #26262C;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.module-bar {
+  height: 4px;
+  background: #26262C;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0.4rem 0;
+}
+
+.module-bar-fill {
+  height: 100%;
+  background: #7F77DD;
+}
